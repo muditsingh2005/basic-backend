@@ -4,6 +4,26 @@ import { User } from "../models/user.model.js";
 import { uploadOnCloudinary } from "../utils/cloudinary.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 
+const generateAccessAndRefreshTokens = async (userId) => {
+  try {
+    const user = await User.findById(userId);
+    const accessToken = user.generateAccessToken();
+    const refreshToken = user.generateRefreshToken();
+    user.refreshToken = refreshToken;
+    await user.save({ validateBeforeSave: false });
+
+    return { accessToken, refreshToken };
+    //
+  } catch (error) {
+    throw new ApiError(
+      500,
+      "something went wrong while generating refresh and access token"
+    );
+
+    //console.log("error while generating token: ", error);
+  }
+};
+
 const registerUser = asyncHandler(async (req, res) => {
   //get user datails from frontend >
   //validation of information fields given by user >
@@ -92,24 +112,6 @@ const registerUser = asyncHandler(async (req, res) => {
     .json(new ApiResponse(200, createdUser, "User registered successfully"));
 });
 
-const generateAccessAndRefreshTokens = async (userId) => {
-  try {
-    const user = await User.findById(userId);
-    const accessToken = user.generateAccessToken();
-    const refreshToken = user.generateRefreshToken();
-    user.refreshToken = refreshToken;
-    await user.save({ validateBeforeSave: false });
-
-    return { accessToken, refreshToken };
-    //
-  } catch (error) {
-    throw new ApiError(
-      500,
-      "something went wrong while generating refresh and access token"
-    );
-  }
-};
-
 const loginUser = asyncHandler(async (req, res) => {
   //req body -> data
   //username or email based login
@@ -119,8 +121,9 @@ const loginUser = asyncHandler(async (req, res) => {
   //send a.tkn and r.tkn via cookies
 
   const { email, username, password } = req.body;
+  // console.log("User logged In", email);
 
-  if (!username || !email) {
+  if (!username && !email) {
     throw new ApiError(400, "username or password is required");
   }
 
